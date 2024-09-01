@@ -1,6 +1,6 @@
 import hydrogram
 import time
-from . import database
+from src.db import database
 import asyncio
 import os
 import re

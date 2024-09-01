@@ -2,12 +2,13 @@
 
 import pickle
 import typing
-import config
 import os
 import hashlib
+import toml
 
 from enum import Enum
 
+config = toml.load("./config.toml")
 
 # Define Database Schema
 
@@ -20,26 +21,26 @@ class Feedback(Enum):
 
 
 class PostType(typing.TypedDict):
-    feedbacks: typing.Dict[str, Feedback]
-    media: typing.Optional[str]
+    feedbacks: dict[str, Feedback]
+    media: str | None
     shash: str
     rating: int
 
 
 class DatabaseType(typing.TypedDict):
-    posts: typing.Dict[int, PostType]
-    timings: typing.Dict[str, int]
-    autodelete: typing.List[int]
+    posts: dict[int, PostType]
+    timings: dict[str, int]
+    autodelete: list[int]
 
 
 # Database Core Functions
 
-def save(db: DatabaseType, name: str = config.DATABASE_FILE) -> None:
+def save(db: DatabaseType, name: str = config['database']['file']) -> None:
     with open(file=name, mode="wb") as f:
         pickle.dump(obj=db, file=f)
 
 
-def load(name: str = config.DATABASE_FILE) -> DatabaseType:
+def load(name: str = config['database']['file']) -> DatabaseType:
     try:
         with open(file=name, mode="rb") as f:
             db: DatabaseType = pickle.load(file=f)
@@ -54,7 +55,7 @@ def load(name: str = config.DATABASE_FILE) -> DatabaseType:
 # Sugarcoated Functions
 
 def hash(num: int) -> str:
-    return hashlib.md5(string=str(num + config.SEED).encode()).hexdigest()
+    return hashlib.md5(string=str(num + config['database']['seed']).encode()).hexdigest()
 
 def add_post(db: DatabaseType, shash: str, id: int, media: str = None) -> None:
     if id in db["posts"]:
@@ -66,7 +67,7 @@ def add_post(db: DatabaseType, shash: str, id: int, media: str = None) -> None:
 def remove_post(db: DatabaseType, id: int) -> None:
     if id not in db["posts"]:
         return
-    
+
     if id in db["autodelete"]:
         db["autodelete"].remove(id)
 
