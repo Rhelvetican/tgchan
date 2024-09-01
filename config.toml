@@ -1,0 +1,30 @@
+[general]
+name = "TG-Chan"
+
+[telegram]
+id = 0
+hash = "abcd"
+token = "wxyz"
+username = "XXXXX"
+
+[database]
+seed = 10
+owner = 123
+file = "database.db"
+post = -456
+mediaFolder = "media"
+postUsername = "XXXXX"
+
+[policies]
+postInterval = 300
+deleteDislikeLimit = 10
+unpinDislikeLimit = 5
+autoDeleteDislikeLimit = 10
+pinLikeLimit = 20
+autoDeleteCount = 25
+
+[media]
+autoPurge = true
+autoPurgeInterval = 15
+maxVideoSize = 20000000 # 20 MB
+maxImageSize = 5000000  # 5 MB

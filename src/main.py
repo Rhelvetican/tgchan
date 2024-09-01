@@ -1,13 +1,11 @@
-# Import Core Libraries
-
 import hydrogram
 import time
-import config
-import database
+from . import database
 import asyncio
 import os
 import re
 import random
+import toml
 
 from hydrogram import filters
 from hydrogram.methods.utilities.idle import idle
@@ -17,31 +15,31 @@ from hydrogram.types import (
     CallbackQuery,
     Message,
 )
-from typing import Dict
 
+config = toml.load("./config.toml")
 
 # Initialize Client and Setup Memory
 
 app = hydrogram.Client(
-    name=config.NAME,
-    api_id=config.API_ID,
-    api_hash=config.API_HASH,
-    bot_token=config.BOT_TOKEN,
+    name=config["general"]["name"],
+    api_id=config["telegram"]["id"],
+    api_hash=config["telegram"]["hash"],
+    bot_token=config["telegram"]["token"],
 )
 
 p_app = hydrogram.Client(
-    name="p_" + config.NAME,
-    api_id=config.API_ID,
-    api_hash=config.API_HASH,
+    name="p_" + config["general"]["name"],
+    api_id=config["telegram"]["id"],
+    api_hash=config["telegram"]["hash"],
 )
 
 loop = asyncio.get_event_loop()
 run = loop.run_until_complete
 
-run(app.start())
-run(p_app.start())
+_ = run(app.start())
+_ = run(p_app.start())
 
-reply_mode: Dict[str, int] = {}
+reply_mode: dict[str, int] = {}
 
 
 # Define Core functions
@@ -64,7 +62,7 @@ def printlog(text: str) -> None:
     name = os.path.join("logs", time.strftime("%Y%m%d") + ".log")
 
     with open(file=name, mode="a") as f:
-        f.write(f"[{time.strftime("%Y-%m-%d %H:%M:%S")}] {text}\n")
+        _ = f.write(f"[{time.strftime("%Y-%m-%d %H:%M:%S")}] {text}\n")
 
 
 # Define Callback Functions
@@ -75,7 +73,7 @@ async def start(_, message: Message) -> None:
     if len(message.command) == 1:
         ## Intro Function
 
-        await message.reply_text(
+        _ = await message.reply_text(
             text="Hello there! I am TG-Chan Posting Bot. I can help you post anonymous messages to TG-Chan.\n\nTo get started, just send me a message to post on TG-Chan, to reply to an existing post, you can just click on the reply button on that post and send me a reply message\n\nYou can view the privacy policy using the /privacy command."
         )
 
@@ -94,39 +92,39 @@ async def start(_, message: Message) -> None:
             extension = None
 
         if not os.path.exists(file_path):
-            await message.reply_text(
+            _ = await message.reply_text(
                 text=("Invalid media key! Please try again with a valid media key.")
             )
             return
 
         if extension == "jpg":
-            msg = await message.reply_photo(
+            msg = _ = await message.reply_photo(
                 photo=file_path,
                 caption=(
-                    f"Here is the photo you requested. It will be deleted in {config.AUTOPURGE_INTERVAL} seconds."
-                    if config.AUTOPURGE_MEDIA
+                    f"Here is the photo you requested. It will be deleted in {config["media"]["autoPurge"]} seconds."
+                    if config["media"]["autoPurge"]
                     else "Here is the photo you requested."
                 ),
             )
 
         elif extension == "mp4":
-            msg = await message.reply_video(
+            msg = _ = await message.reply_video(
                 video=file_path,
                 caption=(
-                    f"Here is the video you requested. It will be deleted in {config.AUTOPURGE_INTERVAL} seconds."
-                    if config.AUTOPURGE_MEDIA
+                    f"Here is the video you requested. It will be deleted in {config["media"]["autoPurgeInterval"]} seconds."
+                    if config["media"]["autoPurge"]
                     else "Here is the video you requested."
                 ),
             )
 
-        if config.AUTOPURGE_MEDIA:
-            await asyncio.sleep(config.AUTOPURGE_INTERVAL)
+        if config["media"]["autoPurge"]:
+            _ = await asyncio.sleep(config["media"]["autoPurgeInterval"])
             try:
-                await msg.delete()
+                _ = await msg.delete()
             except Exception:
                 return
     else:
-        await message.reply_text(text=("Invalid syntax!"))
+        _ = await message.reply_text(text=("Invalid syntax!"))
 
 
 @app.on_message(
@@ -140,14 +138,14 @@ async def post(client: hydrogram.Client, message: Message) -> None:
     text = "When you're ready, just click on the button down below to post your reply to TG-Chan!"
 
     if uhash in reply_mode:
-        msg = await client.get_messages(
-            chat_id=config.POST_ID,
+        msg = _ = await client.get_messages(
+            chat_id=config["database"]["post"],
             message_ids=reply_mode[uhash],
         )
 
         text += f"\n\nCurrently replying to the following message: {msg.link}"
 
-    await message.reply_text(
+    _ = await message.reply_text(
         text=text,
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
@@ -168,35 +166,35 @@ async def delete(client: hydrogram.Client, message: Message) -> None:
     db = database.load()
 
     if len(message.command) != 3:
-        await message.reply_text(text=("Invalid syntax!"))
+        _ = await message.reply_text(text=("Invalid syntax!"))
         return
 
     elif (
         not message.command[1].isdigit()
         or not message.command[2].replace("-", "").isnumeric()
     ):
-        await message.reply_text(text=("Invalid command!"))
+        _ = await message.reply_text(text=("Invalid command!"))
         return
 
     try:
-        msg = await client.get_messages(
-            chat_id=config.POST_ID,
+        msg = _ = await client.get_messages(
+            chat_id=config["database"]["post"],
             message_ids=int(message.command[1]),
         )
 
         shash = db["posts"][msg.id]["shash"]
     except Exception:
-        await message.reply_text(
+        _ = await message.reply_text(
             text=("Invalid message id! Please try again with a valid message id.")
         )
 
         return
 
     if (
-        shash != database.hash(num=message.from_user.id + int(message.command[2]) - config.SEED)
-        and message.from_user.id != config.OWNER_ID
+        shash != database.hash(num=message.from_user.id + int(message.command[2]) - config["database"]["seed"])
+        and message.from_user.id != config["database"]["owner"]
     ):
-        await message.reply_text(
+        _ = await message.reply_text(
             text=(
                 "You are not authorized to delete this message! Please try again with a valid message id."
             )
@@ -204,14 +202,14 @@ async def delete(client: hydrogram.Client, message: Message) -> None:
 
         return
 
-    await p_app.delete_messages(
-        chat_id=config.POST_ID,
+    _ = await p_app.delete_messages(
+        chat_id=config["database"]["post"],
         message_ids=msg.id,
     )
 
     database.remove_post(db=db, id=msg.id)
 
-    await message.reply_text(text=("The message has been successfully deleted!"))
+    _ = await message.reply_text(text=("The message has been successfully deleted!"))
 
     printlog(f"User {shash} deleted a message with id {msg.id}!")
 
@@ -220,7 +218,7 @@ async def delete(client: hydrogram.Client, message: Message) -> None:
 
 @app.on_message(filters=filters.command(commands=["privacy"]))
 async def privacy(_: hydrogram.Client, message: Message) -> None:
-    await message.reply_text(
+    _ = await message.reply_text(
         text=(
             "Privacy Policy:\n\n"
             "1. Your messages are posted anonymously and are linked to your hash.\n"
@@ -239,7 +237,7 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
 
     if callback.data == "like":
         if callback.message.id not in db["posts"]:
-            await callback.answer(text="Invalid message!")
+            _ = await callback.answer(text="Invalid message!")
             return
 
         if uhash in db["posts"][callback.message.id]["feedbacks"]:
@@ -253,16 +251,16 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
             else:
                 db["posts"][callback.message.id]["rating"] += 2
                 dislike = -1
-                db["posts"][callback.message.id]["feedbacks"][
-                    uhash
-                ] = database.Feedback.LIKE
+                db["posts"][callback.message.id]["feedbacks"][uhash] = (
+                    database.Feedback.LIKE
+                )
                 like = 1
         else:
             db["posts"][callback.message.id]["rating"] += 1
             dislike = 0
-            db["posts"][callback.message.id]["feedbacks"][
-                uhash
-            ] = database.Feedback.LIKE
+            db["posts"][callback.message.id]["feedbacks"][uhash] = (
+                database.Feedback.LIKE
+            )
             like = 1
 
         existing_reply_markup = callback.message.reply_markup.inline_keyboard
@@ -283,28 +281,34 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                     )
 
         try:
-            await callback.message.edit_reply_markup(
+            _ = await callback.message.edit_reply_markup(
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=existing_reply_markup)
             )
         except Exception:
             pass
 
-        if db["posts"][callback.message.id]["rating"] >= config.AUTODELETE_LIKE_LIMIT:
+        if (
+            db["posts"][callback.message.id]["rating"]
+            >= config["policies"]["autoDeleteDislikeLimit"]
+        ):
             if callback.message.id in db["autodelete"]:
                 del db["autodelete"][callback.message.id]
 
-        if db["posts"][callback.message.id]["rating"] >= config.PIN_LIKE_LIMIT:
-            await callback.message.pin()
+        if (
+            db["posts"][callback.message.id]["rating"]
+            >= config["policies"]["pinLikeLimit"]
+        ):
+            _ = await callback.message.pin()
 
         if like == 1:
-            await callback.answer(text="Thanks for the feedback!")
+            _ = await callback.answer(text="Thanks for the feedback!")
         else:
-            await callback.answer(text="Feedback removed!")
+            _ = await callback.answer(text="Feedback removed!")
             del db["posts"][callback.message.id]["feedbacks"][uhash]
 
     elif callback.data == "dislike":
         if callback.message.id not in db["posts"]:
-            await callback.answer(text="Invalid message!")
+            _ = await callback.answer(text="Invalid message!")
             return
 
         if uhash in db["posts"][callback.message.id]["feedbacks"]:
@@ -319,16 +323,16 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                 db["posts"][callback.message.id]["rating"] -= 2
                 like = -1
                 dislike = 1
-                db["posts"][callback.message.id]["feedbacks"][
-                    uhash
-                ] = database.Feedback.DISLIKE
+                db["posts"][callback.message.id]["feedbacks"][uhash] = (
+                    database.Feedback.DISLIKE
+                )
         else:
             db["posts"][callback.message.id]["rating"] -= 1
             like = 0
             dislike = 1
-            db["posts"][callback.message.id]["feedbacks"][
-                uhash
-            ] = database.Feedback.DISLIKE
+            db["posts"][callback.message.id]["feedbacks"][uhash] = (
+                database.Feedback.DISLIKE
+            )
 
         existing_reply_markup = callback.message.reply_markup.inline_keyboard
 
@@ -348,39 +352,45 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                     )
 
         try:
-            await callback.message.edit_reply_markup(
+            _ = await callback.message.edit_reply_markup(
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=existing_reply_markup)
             )
         except Exception:
             pass
 
-        if db["posts"][callback.message.id]["rating"] <= -config.UNPIN_DISLIKE_LIMIT:
-            await callback.message.unpin()
+        if (
+            db["posts"][callback.message.id]["rating"]
+            <= -config["policies"]["unpinDislikeLimit"]
+        ):
+            _ = await callback.message.unpin()
 
-        if db["posts"][callback.message.id]["rating"] <= -config.DELETE_DISLIKE_LIMIT:
+        if (
+            db["posts"][callback.message.id]["rating"]
+            <= -config["policies"]["deleteDislikeLimit"]
+        ):
             if callback.message.id in db["autodelete"]:
                 del db["autodelete"][callback.message.id]
 
-            await p_app.delete_messages(
-                chat_id=config.POST_ID,
+            _ = await p_app.delete_messages(
+                chat_id=config["database"]["post"],
                 message_ids=callback.message.id,
             )
             database.remove_post(db=db, id=callback.message.id)
 
         if dislike == 1:
-            await callback.answer(text="Thanks for the feedback!")
+            _ = await callback.answer(text="Thanks for the feedback!")
         else:
-            await callback.answer(text="Feedback removed!")
+            _ = await callback.answer(text="Feedback removed!")
             del db["posts"][callback.message.id]["feedbacks"][uhash]
 
     elif callback.data == "reply":
         if callback.message.id not in db["posts"]:
-            await callback.answer(text="Invalid message!")
+            _ = await callback.answer(text="Invalid message!")
             return
 
         reply_mode[uhash] = callback.message.id
 
-        await callback.answer(
+        _ = await callback.answer(
             text="Reply mode activated! Please send your reply message via bot. You can exit reply mode by sending /cancel."
         )
 
@@ -391,9 +401,12 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
 
         uhash = database.hash(num=callback.from_user.id)
 
-        if uhash in db["timings"] and callback.from_user.id != config.OWNER_ID:
+        if (
+            uhash in db["timings"]
+            and callback.from_user.id != config["database"]["owner"]
+        ):
             if db["timings"][uhash] > time.time():
-                await callback.answer(
+                _ = await callback.answer(
                     text=("Please wait for a while before posting another message!")
                 )
 
@@ -401,7 +414,7 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
             else:
                 del db["timings"][uhash]
         else:
-            db["timings"][uhash] = time.time() + config.POST_INTERVAL
+            db["timings"][uhash] = time.time() + config["policies"]["postInterval"]
 
         seed = random.randint(a=-999_999, b=999_999)
         shash = database.hash(num=callback.from_user.id + seed)
@@ -409,20 +422,20 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
         reply_id = reply_mode.pop(uhash) if uhash in reply_mode else None
         try:
             if reply_id is not None:
-                await client.get_messages(
-                    chat_id=config.POST_ID,
+                _ = await client.get_messages(
+                    chat_id=config["database"]["post"],
                     message_ids=reply_id,
                 )
         except Exception as e:
             print(f"Error: {e}")
-            await callback.answer(
+            _ = await callback.answer(
                 text=("Invalid reply id! Please try again with a valid reply id.")
             )
             return
 
-        if len(db["autodelete"]) >= config.AUTODELETE_COUNT:
+        if len(db["autodelete"]) >= config["policies"]["autoDeleteCount"]:
             if reply_id == db["autodelete"][0]:
-                await callback.answer(
+                _ = await callback.answer(
                     "Reply message is in the auto-delete queue! Please try again with a different message."
                 )
                 del db["reply_mode"][uhash]
@@ -432,16 +445,16 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
 
             printlog(text=f"Auto-deleting message with id {db['autodelete'][0]}!")
 
-            await p_app.delete_messages(
-                chat_id=config.POST_ID,
+            _ = await p_app.delete_messages(
+                chat_id=config["database"]["post"],
                 message_ids=msg_id,
             )
 
         message = callback.message.reply_to_message
 
         if message.photo:
-            if message.photo.file_size > config.MAX_IMAGE_SIZE:
-                await message.reply_text(
+            if message.photo.file_size > config["media"]["maxImageSize"]:
+                _ = await message.reply_text(
                     text=(
                         "The image size is too large! Please try again with a smaller/compressed image or add a link to the image instead."
                     )
@@ -450,11 +463,11 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                 database.save(db=db)
                 return
 
-            await message.download(file_name=f"media/{shash}.jpg")
+            _ = await message.download(file_name=f"media/{shash}.jpg")
 
-            msg = await client.send_message(
+            msg = _ = await client.send_message(
                 reply_to_message_id=reply_id,
-                chat_id=config.POST_ID,
+                chat_id=config["database"]["post"],
                 text=(
                     message.caption.markdown + f"\n\nHash: {shash}"
                     if message.caption
@@ -465,7 +478,7 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                         [
                             InlineKeyboardButton(
                                 text="View attached photo",
-                                url=f"https://t.me/{config.BOT_USERNAME}?start={shash}-jpg",
+                                url=f"https://t.me/{config["telegram"]["username"]}?start={shash}-jpg",
                             ),
                         ],
                         [
@@ -489,8 +502,8 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
             database.add_post(db=db, id=msg.id, media=f"media/{shash}.jpg", shash=shash)
 
         elif message.video:
-            if message.video.file_size > config.MAX_VIDEO_SIZE:
-                await message.reply_text(
+            if message.video.file_size > config["telegram"]["maxVideoSize"]:
+                _ = await message.reply_text(
                     text=(
                         "The video size is too large! Please try again with a smaller/compressed video or add a link to the video instead."
                     )
@@ -499,11 +512,11 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                 database.save(db=db)
                 return
 
-            await message.download(file_name=f"media/{shash}.mp4")
+            _ = await message.download(file_name=f"media/{shash}.mp4")
 
-            msg = await client.send_message(
+            msg = _ = await client.send_message(
                 reply_to_message_id=reply_id,
-                chat_id=config.POST_ID,
+                chat_id=config["database"]["post"],
                 text=(
                     message.caption.markdown + f"\n\nHash: {shash}"
                     if message.caption
@@ -514,7 +527,7 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
                         [
                             InlineKeyboardButton(
                                 text="View attached video",
-                                url=f"https://t.me/{config.BOT_USERNAME}?start={shash}-mp4",
+                                url=f"https://t.me/{config["telegram"]["username"]}?start={shash}-mp4",
                             ),
                         ],
                         [
@@ -538,9 +551,9 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
             database.add_post(db=db, id=msg.id, media=f"media/{shash}.mp4", shash=shash)
 
         elif message.text:
-            msg = await client.send_message(
+            msg = _ = await client.send_message(
                 reply_to_message_id=reply_id,
-                chat_id=config.POST_ID,
+                chat_id=config["database"]["post"],
                 text=message.text.markdown + f"\n\nHash: {shash}",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
@@ -565,7 +578,7 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
             database.add_post(db=db, id=msg.id, shash=shash)
 
         else:
-            await message.reply_text(
+            _ = await message.reply_text(
                 text=(
                     "Invalid message type! Please try again with a valid message type."
                 )
@@ -576,16 +589,16 @@ async def callback(client: hydrogram.Client, callback: CallbackQuery) -> None:
 
         db["autodelete"].append(msg.id)
 
-        await callback.message.edit_text(
+        _ = await callback.message.edit_text(
             text=(
-                f"Your [message](https://t.me/{config.POST_USERNAME}/{msg.id}) has been successfully posted!\n\nTo delete your post, use the `/delete {msg.id} {seed + config.SEED}` command."
+                f"Your [message](https://t.me/{config["database"]["postUsername"]}/{msg.id}) has been successfully posted!\n\nTo delete your post, use the `/delete {msg.id} {seed + config['database']['seed']}` command."
             )
         )
 
         printlog(f"{uhash} posted a message with id {msg.id}!")
 
     else:
-        await callback.answer(text="Invalid action!")
+        _ = await callback.answer(text="Invalid action!")
 
         database.save(db=db)
         return
@@ -599,9 +612,9 @@ async def cancel(_: hydrogram.Client, message: Message) -> None:
 
     if uhash in reply_mode:
         del reply_mode[uhash]
-        await message.reply_text(text="Reply mode deactivated!")
+        _ = await message.reply_text(text="Reply mode deactivated!")
     else:
-        await message.reply_text(text="You are not in reply mode!")
+        _ = await message.reply_text(text="You are not in reply mode!")
 
 
 # Run the Bot
